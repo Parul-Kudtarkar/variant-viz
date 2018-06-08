@@ -48,6 +48,8 @@ app.layout = html.Div(children=[
 			],
 			value = "more",
 		),
+
+		html.Plaintext('select annotations'),
 		dcc.Dropdown(
 			id='annotation-dropdown',
 			#obtain options directly from var data:
@@ -55,7 +57,14 @@ app.layout = html.Div(children=[
 			value=[key for key in var_data.keys()],
 			multi=True
 		),
-		html.Div(children=[])
+		html.Plaintext('select biosamples'),
+		dcc.Dropdown(
+			id='biosample-dropdown',
+			options=[{'label': biosample, 'value': biosample} for biosample in vv.get_biosamples(var_data)],
+			value=[biosample for biosample in vv.get_biosamples(var_data)],
+			multi=True
+		)
+		#html.Div(children=[])
 
 	], style={'columnCount': 1})
 
@@ -67,9 +76,11 @@ app.layout = html.Div(children=[
 	[Input('annotation-dropdown', 'value'),
 	 Input('expand-radio', 'value'),
 	 Input('rsid-input', 'value'),
-	 Input('rsid-button', 'n_clicks')])
-def update_graph(annot_value, expand_value, new_rsid, num_clicks):
+	 Input('rsid-button', 'n_clicks'),
+	 Input('biosample-dropdown', 'value')])
+def update_graph(annot_value, expand_value, new_rsid, num_clicks, selected_biosamples):
 	print("updating graph")
+	print("biosamples:", len(selected_biosamples), selected_biosamples)
 	#declare globals
 	global var_name
 	global var_data
@@ -100,7 +111,8 @@ def update_graph(annot_value, expand_value, new_rsid, num_clicks):
 	else:
 		expanded = False
 
-	return vv.make_graph(var_data=var_data, var_name=var_name, subset_data=new_data, expanded=expanded)
+	return vv.make_graph(var_data=var_data, var_name=var_name, subset_data=new_data, expanded=expanded, \
+		biosamples=selected_biosamples)
 
 #update menu choices when var_name changes:
 @app.callback(

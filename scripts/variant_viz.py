@@ -4,6 +4,7 @@ import plotly.graph_objs as go
 import plotly.figure_factory as ff
 import json
 import numpy as np
+from copy import deepcopy
 
 class VariantViz:
 
@@ -56,14 +57,18 @@ class VariantViz:
 		
 	}
 
+	#get all biosample_term_names in var_data:
+	def get_biosamples(self, var_data):
+	    biosamples = []
+	    for anno in var_data.keys():
+	        for item in var_data[anno]:
+	            biosamples.append(item["biosample_term_name"])
+
+	    return list(set(biosamples))
+
 	def generate_positions(self, var_data=dummy_data, var_name=dummy_name, vert_space=4, box_width=10, \
-						   box_height=4, text_y0=100, plot_width=100, offset=20, expanded=True):
+						   box_height=4, text_y0=100, plot_width=100, offset=20, expanded=True, biosamples=""):
 		
-		'''
-		print("var name:", var_name)
-		for anno in var_data.keys():
-			print(anno, len(var_data[anno]))
-		'''
 		#get number of annotations
 		num_annotations = len(var_data.keys())
 		num_sides = int(num_annotations/2)
@@ -108,25 +113,42 @@ class VariantViz:
 				]
 			]
 			
+			#create lists to keep track of text-coords and shape-coords 
+			cur_text_coords = []
+			cur_shape_coords = []
+
 			if expanded == True:
 				for j, item in enumerate(positions[var_name]["annotations"][anno]["items"]):
-					if j == 0:
-						item["text-coords"] = [
-							positions[var_name]["annotations"][anno]["text-coords"][0],
-							positions[var_name]["annotations"][anno]["text-coords"][1] - box_height
+					if item["biosample_term_name"] in biosamples:
+						#if j == 0: #this j == 0 won't work in every case
+						if len(cur_text_coords) == 0:
+							item["text-coords"] = [
+								positions[var_name]["annotations"][anno]["text-coords"][0],
+								positions[var_name]["annotations"][anno]["text-coords"][1] - box_height
+							]
+							cur_text_coords.append(item["text-coords"])
+						else:
+							'''
+							item["text-coords"] = [ #this could backfire because the j-1 element could be an invalid biosample
+								positions[var_name]["annotations"][anno]["items"][j-1]["text-coords"][0],
+								positions[var_name]["annotations"][anno]["items"][j-1]["text-coords"][1] - box_height
+							]
+							'''
+							item["text-coords"] = [
+								cur_text_coords[-1][0],
+								cur_text_coords[-1][1] - box_height
+							]
+							cur_text_coords.append(item["text-coords"])
+						item["shape-coords"] = [
+							[item["text-coords"][0]-box_width/2, item["text-coords"][1]-box_height/2],
+							[item["text-coords"][0]+box_width/2, item["text-coords"][1]+box_height/2]
 						]
 					else:
-						item["text-coords"] = [
-							positions[var_name]["annotations"][anno]["items"][j-1]["text-coords"][0],
-							positions[var_name]["annotations"][anno]["items"][j-1]["text-coords"][1] - box_height
-						]
-					item["shape-coords"] = [
-						[item["text-coords"][0]-box_width/2, item["text-coords"][1]-box_height/2],
-						[item["text-coords"][0]+box_width/2, item["text-coords"][1]+box_height/2]
-					]
-					#print("item:", item["biosample_term_name"], item["text-coords"])
-					#print("anno", anno, positions[var_name]["annotations"][anno]["text-coords"])
-
+						print(item["biosample_term_name"], "biosample_term_name not found")
+						if "text-coords" in item.keys():
+							item.pop("text-coords")
+							item.pop("shape-coords")
+		print()
 		return positions
 
 	def generate_shapes(self, var_data, var_name, colors="", expanded=True):
@@ -138,7 +160,8 @@ class VariantViz:
 			shape_coords.append(var_data[var_name]["annotations"][anno]["shape-coords"])
 			if expanded == True:
 				for item in var_data[var_name]["annotations"][anno]["items"]:
-					shape_coords.append(item["shape-coords"])
+					if "shape-coords" in item.keys():
+						shape_coords.append(item["shape-coords"])
 
 		if colors == "":
 			colors = ['#888' for i in range(len(shape_coords))]
@@ -177,14 +200,15 @@ class VariantViz:
 				min_coords[1] = info["text-coords"][1]
 			
 			for item in positions[var_name]["annotations"][anno]["items"]:
-				if item["text-coords"][0] > max_coords[0]:
-					max_coords[0] = item["text-coords"][0]
-				elif item["text-coords"][0] < min_coords[0]:
-					min_coords[0] = item["text-coords"][0]
-				if item["text-coords"][1] > max_coords[1]:
-					max_coords[1] = item["text-coords"][1]
-				elif item["text-coords"][1] < min_coords[1]:
-					min_coords[1] = item["text-coords"][1]
+				if "text-coords" in item.keys():
+					if item["text-coords"][0] > max_coords[0]:
+						max_coords[0] = item["text-coords"][0]
+					elif item["text-coords"][0] < min_coords[0]:
+						min_coords[0] = item["text-coords"][0]
+					if item["text-coords"][1] > max_coords[1]:
+						max_coords[1] = item["text-coords"][1]
+					elif item["text-coords"][1] < min_coords[1]:
+						min_coords[1] = item["text-coords"][1]
 
 		#extend invisible x points to avoid text cutoffs
 		min_coords[0] -= 25
@@ -217,10 +241,13 @@ class VariantViz:
 		return "https://www.t2depigenome.org/peak_metadata/region=%s&genome=GRCh37/peak_metadata.tsv" % rsid
 
 	def make_graph(self, var_data=dummy_data, var_name=dummy_name, subset_data="", vert_space=4, box_width=25, \
-				box_height=4, text_y0=100, plot_width=1000, plot_height=500, offset=20, expanded=True):
+				box_height=4, text_y0=100, plot_width=1000, plot_height=500, offset=20, expanded=True, biosamples=""):
+
+		if biosamples == "":
+			biosamples = self.get_biosamples(var_data)
 
 		#get max number of items in one annotation
-		max_items = max([len(var_data[anno]) for anno in var_data.keys()])
+		max_items = max([len([item for item in var_data[anno] if item["biosample_term_name"] in self.get_biosamples(var_data)]) for anno in var_data.keys()])
 		num_annotations = len(var_data.keys())
 	
 		#compute plot width and height:
@@ -230,13 +257,13 @@ class VariantViz:
 		offset = box_width + 5
 
 		all_positions = self.generate_positions(var_data, var_name, expanded=expanded, box_height=box_height, \
-								   box_width=box_width, offset=offset, text_y0=text_y0)
+								   box_width=box_width, offset=offset, text_y0=text_y0, biosamples=biosamples)
 		if subset_data == "":
 			positions = self.generate_positions(var_data, var_name, expanded=expanded, box_height=box_height, \
-								   box_width=box_width, offset=offset, text_y0=text_y0)
+								   box_width=box_width, offset=offset, text_y0=text_y0, biosamples=biosamples)
 		else:
 			positions = self.generate_positions(subset_data, var_name, expanded=expanded, box_height=box_height, \
-								   box_width=box_width, offset=offset, text_y0=text_y0)
+								   box_width=box_width, offset=offset, text_y0=text_y0, biosamples=biosamples)
 
 		#initialize node and edge traces:
 		node_trace = go.Scatter(
@@ -271,16 +298,17 @@ class VariantViz:
 			node_trace['text'].append(anno)
 			if expanded == True:
 				for item in positions[var_name]["annotations"][anno]["items"]:
-					node_trace['x'].append(item["text-coords"][0])
-					node_trace['y'].append(item["text-coords"][1])
-					text = item["biosample_term_name"] + ": "
-					if "state" in item.keys():
-						text += item['state']
-					elif "footprint" in item.keys():
-						text += item['footprint']
-					elif "target" in item.keys():
-						text += item['target']
-					node_trace['text'].append(text)
+					if item["biosample_term_name"] in biosamples:
+						node_trace['x'].append(item["text-coords"][0])
+						node_trace['y'].append(item["text-coords"][1])
+						text = item["biosample_term_name"] + ": "
+						if "state" in item.keys():
+							text += item['state']
+						elif "footprint" in item.keys():
+							text += item['footprint']
+						elif "target" in item.keys():
+							text += item['target']
+						node_trace['text'].append(text)
 
 		#fill in edges between variant name and annotation names:
 		for anno in positions[var_name]["annotations"].keys():
