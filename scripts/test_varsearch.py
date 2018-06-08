@@ -20,8 +20,8 @@ app = dash.Dash()
 vv = VariantViz()
 
 #initialize var_data
-#var_name = "rs11257655"
-var_name = "rs7903146"
+var_name = "rs11257655"
+#var_name = "rs7903146"
 with urllib.request.urlopen(vv.rsid_url(var_name)) as url:
 	var_data = json.loads(url.read())
 all_annotations = [key for key in var_data.keys()]
@@ -31,9 +31,9 @@ rsid_button_clicks = 0
 
 app.layout = html.Div(children=[
 
-	dcc.Graph(id='test-interactivity',figure=vv.make_graph(var_data=var_data, var_name=var_name)),
-
 	html.Div(children=[
+
+		html.Plaintext('search rsid'),
 		dcc.Input(
 			id='rsid-input',
 			value=var_name,
@@ -66,7 +66,10 @@ app.layout = html.Div(children=[
 		)
 		#html.Div(children=[])
 
-	], style={'columnCount': 1})
+	], style={'columnCount': 1}),
+
+	dcc.Graph(id='test-interactivity',figure=vv.make_graph(var_data=var_data, var_name=var_name)),
+
 
 ])
 
