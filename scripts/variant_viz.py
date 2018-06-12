@@ -59,16 +59,19 @@ class VariantViz:
 
 	#get all biosample_term_names in var_data:
 	def get_biosamples(self, var_data):
-	    biosamples = []
-	    for anno in var_data.keys():
-	        for item in var_data[anno]:
-	            biosamples.append(item["biosample_term_name"])
+		biosamples = []
+		for anno in var_data.keys():
+			for item in var_data[anno]:
+				biosamples.append(item["biosample_term_name"])
 
-	    return list(set(biosamples))
+		return list(set(biosamples))
 
 	def generate_positions(self, var_data=dummy_data, var_name=dummy_name, vert_space=4, box_width=10, \
 						   box_height=4, text_y0=100, plot_width=100, offset=20, expanded=True, biosamples=""):
 		
+		#sort items within var_data (should I do this outside of this function??):
+		var_data = {anno: sorted(items, key=lambda x: x['biosample_term_name']) for anno, items in var_data.items()}
+
 		#get number of annotations
 		num_annotations = len(var_data.keys())
 		num_sides = int(num_annotations/2)
@@ -116,52 +119,58 @@ class VariantViz:
 			#create lists to keep track of text-coords and shape-coords 
 			cur_text_coords = []
 			cur_shape_coords = []
+			last_biosample = ""
 
 			if expanded == True:
 				for j, item in enumerate(positions[var_name]["annotations"][anno]["items"]):
+					cur_biosample = item['biosample_term_name']
 					if item["biosample_term_name"] in biosamples:
-						#if j == 0: #this j == 0 won't work in every case
+						#text coordinates
 						if len(cur_text_coords) == 0:
 							item["text-coords"] = [
 								positions[var_name]["annotations"][anno]["text-coords"][0],
 								positions[var_name]["annotations"][anno]["text-coords"][1] - box_height
 							]
-							cur_text_coords.append(item["text-coords"])
 						else:
-							'''
-							item["text-coords"] = [ #this could backfire because the j-1 element could be an invalid biosample
-								positions[var_name]["annotations"][anno]["items"][j-1]["text-coords"][0],
-								positions[var_name]["annotations"][anno]["items"][j-1]["text-coords"][1] - box_height
-							]
-							'''
 							item["text-coords"] = [
 								cur_text_coords[-1][0],
 								cur_text_coords[-1][1] - box_height
 							]
-							cur_text_coords.append(item["text-coords"])
-						item["shape-coords"] = [
+						cur_text_coords.append(item["text-coords"])
+
+						#shape coordinates
+						if j==0 or cur_biosample != last_biosample:
+							cur_shape_coords = [
 							[item["text-coords"][0]-box_width/2, item["text-coords"][1]-box_height/2],
 							[item["text-coords"][0]+box_width/2, item["text-coords"][1]+box_height/2]
 						]
+						elif cur_biosample == last_biosample:
+							cur_shape_coords[0][1] -= box_height
+						item["shape-coords"] = cur_shape_coords
+						last_biosample = cur_biosample
+
 					else:
 						print(item["biosample_term_name"], "biosample_term_name not found")
 						if "text-coords" in item.keys():
 							item.pop("text-coords")
 							item.pop("shape-coords")
-		print()
+					
 		return positions
 
-	def generate_shapes(self, var_data, var_name, colors="", expanded=True):
-
-		shape_coords = [var_data[var_name]["shape-coords"]]
+	def generate_shapes(self, positions, var_name, colors="", expanded=True):
+		
+		shape_coords = [positions[var_name]["shape-coords"]]
 		shapes = []
-
-		for anno in var_data[var_name]["annotations"].keys():
-			shape_coords.append(var_data[var_name]["annotations"][anno]["shape-coords"])
+		
+		for anno in positions[var_name]["annotations"].keys():
+			shape_coords.append(positions[var_name]["annotations"][anno]["shape-coords"])
 			if expanded == True:
-				for item in var_data[var_name]["annotations"][anno]["items"]:
-					if "shape-coords" in item.keys():
+				last_biosample = ""
+				for item in positions[var_name]["annotations"][anno]["items"]:
+					cur_biosample = item["biosample_term_name"]
+					if cur_biosample != last_biosample and "shape-coords" in item.keys():
 						shape_coords.append(item["shape-coords"])
+					last_biosample = cur_biosample
 
 		if colors == "":
 			colors = ['#888' for i in range(len(shape_coords))]
@@ -296,12 +305,20 @@ class VariantViz:
 			node_trace['x'].append(positions[var_name]["annotations"][anno]["text-coords"][0])
 			node_trace['y'].append(positions[var_name]["annotations"][anno]["text-coords"][1])
 			node_trace['text'].append(anno)
+			last_biosample = ""
 			if expanded == True:
 				for item in positions[var_name]["annotations"][anno]["items"]:
 					if item["biosample_term_name"] in biosamples:
+						cur_biosample = item["biosample_term_name"]
 						node_trace['x'].append(item["text-coords"][0])
 						node_trace['y'].append(item["text-coords"][1])
-						text = item["biosample_term_name"] + ": "
+						'''
+						if cur_biosample != last_biosample:
+							text = item["biosample_term_name"] + ":<br>"
+						else:
+							text = ""
+						'''
+						text = item['biosample_term_name'] + ": "
 						if "state" in item.keys():
 							text += item['state']
 						elif "footprint" in item.keys():
@@ -309,6 +326,7 @@ class VariantViz:
 						elif "target" in item.keys():
 							text += item['target']
 						node_trace['text'].append(text)
+						last_biosample = cur_biosample
 
 		#fill in edges between variant name and annotation names:
 		for anno in positions[var_name]["annotations"].keys():
