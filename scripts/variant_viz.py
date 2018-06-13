@@ -5,6 +5,7 @@ import plotly.figure_factory as ff
 import json
 import numpy as np
 from copy import deepcopy
+import colorlover as cl
 
 class VariantViz:
 
@@ -157,23 +158,34 @@ class VariantViz:
 					
 		return positions
 
-	def generate_shapes(self, positions, var_name, colors="", expanded=True):
+	def generate_shapes(self, positions, var_name, biosample_colors, expanded=True):
 		
 		shape_coords = [positions[var_name]["shape-coords"]]
+		shape_biosamples = [var_name]
 		shapes = []
 		
 		for anno in positions[var_name]["annotations"].keys():
 			shape_coords.append(positions[var_name]["annotations"][anno]["shape-coords"])
+			shape_biosamples.append(anno)
 			if expanded == True:
 				last_biosample = ""
 				for item in positions[var_name]["annotations"][anno]["items"]:
 					cur_biosample = item["biosample_term_name"]
 					if cur_biosample != last_biosample and "shape-coords" in item.keys():
 						shape_coords.append(item["shape-coords"])
+						shape_biosamples.append(cur_biosample)
 					last_biosample = cur_biosample
 
-		if colors == "":
-			colors = ['#888' for i in range(len(shape_coords))]
+		#make shape color list:
+		if biosample_colors == "":
+			colors = ['#888' for i in range(len(shape_biosamples))]
+		else:
+			colors = []
+			for i, biosample in enumerate(shape_biosamples):
+				if biosample in biosample_colors.keys():
+					colors.append(biosample_colors[biosample])
+				else:
+					colors.append('#888')
 		
 		for i, coords in enumerate(shape_coords):
 			shapes.append({
@@ -188,8 +200,8 @@ class VariantViz:
 					'color': '#888',
 					'width': 2,
 				},
-				'fillcolor': 'rgba(55, 128, 191, 0.6)',
-				'opacity': 0.5
+				'fillcolor': colors[i],
+				'opacity': 0.275
 			})
 		return shapes
 
@@ -248,6 +260,14 @@ class VariantViz:
 
 	def rsid_url(self, rsid):
 		return "https://www.t2depigenome.org/peak_metadata/region=%s&genome=GRCh37/peak_metadata.tsv" % rsid
+
+	def get_biosample_colors(self, biosamples):
+		print("get biosample colors:")
+		print("biosamples:", len(biosamples))
+		c = cl.scales['11']['qual']['Paired']
+		c_ = cl.interp(c, len(biosamples)+1)
+		#c_ = cl.interp(c, 30)
+		return {biosample: c_[i] for i, biosample in enumerate(biosamples)}
 
 	def make_graph(self, var_data=dummy_data, var_name=dummy_name, subset_data="", vert_space=4, box_width=25, \
 				box_height=4, text_y0=100, plot_width=1000, plot_height=500, offset=20, expanded=True, biosamples=""):
@@ -312,7 +332,7 @@ class VariantViz:
 						cur_biosample = item["biosample_term_name"]
 						node_trace['x'].append(item["text-coords"][0])
 						node_trace['y'].append(item["text-coords"][1])
-						'''
+						''' 
 						if cur_biosample != last_biosample:
 							text = item["biosample_term_name"] + ":<br>"
 						else:
@@ -334,7 +354,6 @@ class VariantViz:
 			edge_trace['y'] += [positions[var_name]["shape-coords"][0][1], positions[var_name]["annotations"][anno]["shape-coords"][1][1], None]
 		
 		#add invisible points:
-		
 		min_coords, max_coords = self.invisible_points(all_positions, var_name)
 		node_trace['x'].append(min_coords[0])
 		node_trace['y'].append(min_coords[1])
@@ -361,8 +380,14 @@ class VariantViz:
 			showlegend=False,
 		)
 
-		layout['shapes'] = self.generate_shapes(positions, var_name, expanded=expanded)
-
+		#generate shapes:
+		'''
+		biosample_colors = self.get_biosample_colors(biosamples)
+		layout['shapes'] = self.generate_shapes(positions, var_name, \
+			biosample_colors=biosample_colors, expanded=expanded)
+		'''
+		layout['shapes'] = self.generate_shapes(positions, var_name, \
+			biosample_colors="", expanded=expanded)
 		data = [node_trace, edge_trace]
 		fig = go.Figure(data=data, layout=layout)
 		return fig
