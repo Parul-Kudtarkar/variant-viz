@@ -158,7 +158,7 @@ class VariantViz:
 					
 		return positions
 
-	def generate_shapes(self, positions, var_name, biosample_colors, expanded=True):
+	def generate_shapes(self, positions, var_name, biosample_colors="", expanded=True):
 		
 		shape_coords = [positions[var_name]["shape-coords"]]
 		shape_biosamples = [var_name]
@@ -177,6 +177,7 @@ class VariantViz:
 					last_biosample = cur_biosample
 
 		#make shape color list:
+		'''
 		if biosample_colors == "":
 			colors = ['#888' for i in range(len(shape_biosamples))]
 		else:
@@ -186,6 +187,20 @@ class VariantViz:
 					colors.append(biosample_colors[biosample])
 				else:
 					colors.append('#888')
+		'''
+		colors = []
+		cur_color = "#A9A9A9"
+		for i, item in enumerate(shape_biosamples):
+			#is this an annotation name?
+			if item in positions[var_name]["annotations"].keys():
+				colors.append('#808080')
+			else: 
+				colors.append(cur_color)
+				if cur_color == "#A9A9A9":
+					cur_color = "#D3D3D3"
+				elif cur_color == "#D3D3D3":
+					cur_color = "#A9A9A9"
+	
 		
 		for i, coords in enumerate(shape_coords):
 			shapes.append({
