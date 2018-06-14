@@ -220,22 +220,20 @@ class VariantViz:
 			})
 		return shapes
 
-	def invisible_points(self, positions, var_name):
+	def invisible_points(self, all_positions, var_name, box_height):
 		
-		min_coords = [i for i in positions[var_name]["text-coords"]]
-		max_coords = [i for i in positions[var_name]["text-coords"]]
+		min_coords = [i for i in all_positions[var_name]["text-coords"]]
+		max_coords = [i for i in all_positions[var_name]["text-coords"]]
 		
-		for anno, info in positions[var_name]["annotations"].items():
+		for anno, info in all_positions[var_name]["annotations"].items():
 			if info["text-coords"][0] > max_coords[0]:
 				max_coords[0] = info["text-coords"][0]
 			elif info["text-coords"][0] < min_coords[0]:
 				min_coords[0] = info["text-coords"][0]
 			if info["text-coords"][1] > max_coords[1]:
 				max_coords[1] = info["text-coords"][1]
-			elif info["text-coords"][1] < min_coords[1]:
-				min_coords[1] = info["text-coords"][1]
 			
-			for item in positions[var_name]["annotations"][anno]["items"]:
+			for item in all_positions[var_name]["annotations"][anno]["items"]:
 				if "text-coords" in item.keys():
 					if item["text-coords"][0] > max_coords[0]:
 						max_coords[0] = item["text-coords"][0]
@@ -243,12 +241,13 @@ class VariantViz:
 						min_coords[0] = item["text-coords"][0]
 					if item["text-coords"][1] > max_coords[1]:
 						max_coords[1] = item["text-coords"][1]
-					elif item["text-coords"][1] < min_coords[1]:
-						min_coords[1] = item["text-coords"][1]
 
 		#extend invisible x points to avoid text cutoffs
 		min_coords[0] -= 25
 		max_coords[0] += 25
+
+		#set min y coordinate:
+		min_coords[1] = max_coords[1] - 20 - (box_height * max([len(all_positions[var_name]["annotations"][anno]["items"]) for anno in all_positions[var_name]["annotations"].keys()]))
 	
 		return min_coords, max_coords
 
@@ -308,6 +307,17 @@ class VariantViz:
 		else:
 			positions = self.generate_positions(subset_data, var_name, expanded=expanded, box_height=box_height, \
 								   box_width=box_width, offset=offset, text_y0=text_y0, biosamples=biosamples)
+
+		#testing: compare all_positions and positions:
+		print("all_positions:")
+		for anno in all_positions[var_name]["annotations"].keys():
+			print(anno, len(all_positions[var_name]["annotations"][anno]["items"]))
+		print()
+		print("positions:")
+		for anno in positions[var_name]["annotations"].keys():
+			print(anno, len(positions[var_name]["annotations"][anno]["items"]))
+		print()
+
 
 		#initialize node and edge traces:
 		node_trace = go.Scatter(
@@ -369,7 +379,12 @@ class VariantViz:
 			edge_trace['y'] += [positions[var_name]["shape-coords"][0][1], positions[var_name]["annotations"][anno]["shape-coords"][1][1], None]
 		
 		#add invisible points:
-		min_coords, max_coords = self.invisible_points(all_positions, var_name)
+		print("setting invisible points:")
+		min_coords, max_coords = self.invisible_points(all_positions, var_name, box_height)
+		#min_coords, max_coords = self.invisible_points(positions, var_name)
+		print("min coords:", min_coords)
+		print("max coords:", max_coords)
+		print()
 		node_trace['x'].append(min_coords[0])
 		node_trace['y'].append(min_coords[1])
 		node_trace['x'].append(max_coords[0])
