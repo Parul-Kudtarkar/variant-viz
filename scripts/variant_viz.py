@@ -9,6 +9,7 @@ import colorlover as cl
 
 class VariantViz:
 
+	'''
 	dummy_name = "rs11257655"
 	dummy_data = {
 		"chromatin_state": [
@@ -57,6 +58,7 @@ class VariantViz:
 		]
 		
 	}
+	'''
 
 	#get all biosample_term_names in var_data:
 	def get_biosamples(self, var_data):
@@ -67,7 +69,7 @@ class VariantViz:
 
 		return list(set(biosamples))
 
-	def generate_positions(self, var_data=dummy_data, var_name=dummy_name, vert_space=4, box_width=10, \
+	def generate_positions(self, var_data, var_name, vert_space=4, box_width=10, \
 						   box_height=4, text_y0=100, plot_width=100, offset=20, expanded=True, biosamples=""):
 		
 		#sort items within var_data (should I do this outside of this function??):
@@ -283,7 +285,7 @@ class VariantViz:
 		#c_ = cl.interp(c, 30)
 		return {biosample: c_[i] for i, biosample in enumerate(biosamples)}
 
-	def make_graph(self, var_data=dummy_data, var_name=dummy_name, subset_data="", vert_space=4, box_width=25, \
+	def make_graph(self, var_data, var_name, subset_data="", vert_space=4, box_width=25, \
 				box_height=4, text_y0=100, plot_width=1000, plot_height=500, offset=20, expanded=True, biosamples=""):
 
 		if biosamples == "":
