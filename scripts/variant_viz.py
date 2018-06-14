@@ -165,17 +165,25 @@ class VariantViz:
 		shape_coords = [positions[var_name]["shape-coords"]]
 		shape_biosamples = [var_name]
 		shapes = []
+		colors = ["#808080"]
 		
 		for anno in positions[var_name]["annotations"].keys():
+			colors.append("808080")
 			shape_coords.append(positions[var_name]["annotations"][anno]["shape-coords"])
 			shape_biosamples.append(anno)
 			if expanded == True:
 				last_biosample = ""
+				cur_color = "#D3D3D3"
 				for item in positions[var_name]["annotations"][anno]["items"]:
 					cur_biosample = item["biosample_term_name"]
 					if cur_biosample != last_biosample and "shape-coords" in item.keys():
 						shape_coords.append(item["shape-coords"])
 						shape_biosamples.append(cur_biosample)
+						colors.append(cur_color)
+						if cur_color == "#A9A9A9":
+							cur_color = "#D3D3D3"
+						elif cur_color == "#D3D3D3":
+							cur_color = "#A9A9A9"
 					last_biosample = cur_biosample
 
 		#make shape color list:
@@ -190,19 +198,6 @@ class VariantViz:
 				else:
 					colors.append('#888')
 		'''
-		colors = []
-		cur_color = "#A9A9A9"
-		for i, item in enumerate(shape_biosamples):
-			#is this an annotation name?
-			if item in positions[var_name]["annotations"].keys():
-				colors.append('#808080')
-			else: 
-				colors.append(cur_color)
-				if cur_color == "#A9A9A9":
-					cur_color = "#D3D3D3"
-				elif cur_color == "#D3D3D3":
-					cur_color = "#A9A9A9"
-	
 		
 		for i, coords in enumerate(shape_coords):
 			shapes.append({
@@ -285,6 +280,14 @@ class VariantViz:
 		#c_ = cl.interp(c, 30)
 		return {biosample: c_[i] for i, biosample in enumerate(biosamples)}
 
+	def anno_hovertext(self, item):
+		ht = ""
+		for key, val in item.items():
+			if key not in ["text-coords", "shape-coords"]:
+				ht += key + ": " + val + "<br>"
+		return ht
+	
+
 	def make_graph(self, var_data, var_name, subset_data="", vert_space=4, box_width=25, \
 				box_height=4, text_y0=100, plot_width=1000, plot_height=500, offset=20, expanded=True, biosamples=""):
 
@@ -310,29 +313,20 @@ class VariantViz:
 			positions = self.generate_positions(subset_data, var_name, expanded=expanded, box_height=box_height, \
 								   box_width=box_width, offset=offset, text_y0=text_y0, biosamples=biosamples)
 
-		#testing: compare all_positions and positions:
-		print("all_positions:")
-		for anno in all_positions[var_name]["annotations"].keys():
-			print(anno, len(all_positions[var_name]["annotations"][anno]["items"]))
-		print()
-		print("positions:")
-		for anno in positions[var_name]["annotations"].keys():
-			print(anno, len(positions[var_name]["annotations"][anno]["items"]))
-		print()
-
-
 		#initialize node and edge traces:
 		node_trace = go.Scatter(
 			x = [],
 			y = [],
 			text = [],
 			mode='markers+text',
-			hoverinfo='none',
+			hoverinfo='closest',
+			hovertext=[],
 			marker=dict(
-				color=[],
-				size=10,
-				line=dict(width=10),
 				opacity=0.0
+			),
+			textfont=dict(
+				family='helvetica',
+				color='black'
 			)
 		)
 
@@ -348,23 +342,28 @@ class VariantViz:
 		node_trace['x'].append(positions[var_name]["text-coords"][0])
 		node_trace['y'].append(positions[var_name]["text-coords"][1])
 		node_trace['text'].append(var_name)
+		node_trace['hovertext'].append("")
 		for anno in positions[var_name]["annotations"].keys():
 			node_trace['x'].append(positions[var_name]["annotations"][anno]["text-coords"][0])
 			node_trace['y'].append(positions[var_name]["annotations"][anno]["text-coords"][1])
 			node_trace['text'].append(anno)
+			node_trace['hovertext'].append("")
 			last_biosample = ""
 			if expanded == True:
 				for item in positions[var_name]["annotations"][anno]["items"]:
 					if item["biosample_term_name"] in biosamples:
+						node_trace['hovertext'].append(self.anno_hovertext(item))
 						cur_biosample = item["biosample_term_name"]
 						node_trace['x'].append(item["text-coords"][0])
 						node_trace['y'].append(item["text-coords"][1])
+
 						''' 
 						if cur_biosample != last_biosample:
 							text = item["biosample_term_name"] + ":<br>"
 						else:
 							text = ""
 						'''
+
 						text = item['biosample_term_name'] + ": "
 						if "state" in item.keys():
 							text += item['state']
@@ -410,6 +409,15 @@ class VariantViz:
 				showticklabels=False
 			),
 			showlegend=False,
+			hovermode='closest',
+			hoverlabel=dict(
+				bgcolor='white',
+				bordercolor='black',
+				font=dict(
+					family='helvetica', 
+					color='black'
+				)
+			)
 		)
 
 		#generate shapes:

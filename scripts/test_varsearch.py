@@ -108,10 +108,6 @@ def update_graph(annot_value, expand_value, new_rsid, num_clicks, selected_biosa
 	#make new dict using only checked values:
 	new_data = {key:val for key, val in var_data.items() if key in annot_value}
 
-	#check if new data is same as old data:
-	if new_data == var_data:
-		new_data = ""
-
 	#expand or not?
 	if expand_value == "more":
 		expanded = True
@@ -131,7 +127,8 @@ def update_dropdown(new_rsid, num_clicks):
 	global rsid_button_clicks
 	global all_annotations
 
-	if num_clicks is not None and num_clicks == rsid_button_clicks + 1:
+	#if num_clicks is not None and num_clicks == rsid_button_clicks + 1:
+	if num_clicks > 0:
 		print("updating dropdown menu")
 		print("annotations:", all_annotations)
 		all_annotations = [key for key in var_data.keys()]
