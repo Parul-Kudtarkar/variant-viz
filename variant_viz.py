@@ -9,57 +9,6 @@ import colorlover as cl
 
 class VariantViz:
 
-	'''
-	dummy_name = "rs11257655"
-	dummy_data = {
-		"chromatin_state": [
-			{
-				"state": "enhA1",
-				"biosample_term_name": "skeletal muscle"
-			},
-			{
-				"state": "promoter",
-				"biosample_term_name": "islet"
-			}
-		],
-		"footprints": [
-			{
-				"footprint": "HNF4",
-				"biosample_term_name": "islet"
-			},
-			{
-				"footprint": "PPARA",
-				"biosample_term_name": "islet",
-			},
-			{
-				"footprint": "TCF3",
-				"biosample_term_name": "hippocampus"
-			},
-			{
-				"footprint": "STAT",
-				"biosample_term_name": "skeletal muscle"
-			}
-			
-		],
-
-		"ChIP": [
-			{
-				"target": "FOXA2",
-				"biosample_term_name": "islet",
-			},
-			{
-				"target": "NKX2.2",
-				"biosample_term_name": "skeletal muscle"
-			},
-			{
-				"target": "CTCF",
-				"biosample_term_name": "islet"
-			},
-		]
-		
-	}
-	'''
-
 	#get all biosample_term_names in var_data:
 	def get_biosamples(self, var_data):
 		biosamples = []
@@ -161,7 +110,6 @@ class VariantViz:
 		return positions
 
 	def generate_shapes(self, positions, var_name, biosample_colors="", expanded=True):
-		
 		shape_coords = [positions[var_name]["shape-coords"]]
 		shape_biosamples = [var_name]
 		shapes = []
@@ -186,19 +134,6 @@ class VariantViz:
 							cur_color = "#A9A9A9"
 					last_biosample = cur_biosample
 
-		#make shape color list:
-		'''
-		if biosample_colors == "":
-			colors = ['#888' for i in range(len(shape_biosamples))]
-		else:
-			colors = []
-			for i, biosample in enumerate(shape_biosamples):
-				if biosample in biosample_colors.keys():
-					colors.append(biosample_colors[biosample])
-				else:
-					colors.append('#888')
-		'''
-		
 		for i, coords in enumerate(shape_coords):
 			shapes.append({
 				'type': 'rect',
@@ -217,6 +152,7 @@ class VariantViz:
 			})
 		return shapes
 
+	#create invisible points in the corners of the graph to avoid unwanted resizing
 	def invisible_points(self, all_positions, var_name, box_height):
 		
 		min_coords = [i for i in all_positions[var_name]["text-coords"]]
@@ -248,11 +184,9 @@ class VariantViz:
 	
 		return min_coords, max_coords
 
-	#finds the longest label name
+	#helper function to find the longest label name
 	def max_text_len(self, var_data):
-		
 		max_text_len = 0
-		
 		for anno, items in var_data.items():
 			if len(anno) > max_text_len:
 				max_text_len = len(anno)
@@ -273,11 +207,8 @@ class VariantViz:
 		return "https://www.t2depigenome.org/peak_metadata/region=%s&genome=GRCh37/peak_metadata.tsv" % rsid
 
 	def get_biosample_colors(self, biosamples):
-		print("get biosample colors:")
-		print("biosamples:", len(biosamples))
 		c = cl.scales['11']['qual']['Paired']
 		c_ = cl.interp(c, len(biosamples)+1)
-		#c_ = cl.interp(c, 30)
 		return {biosample: c_[i] for i, biosample in enumerate(biosamples)}
 
 	def anno_hovertext(self, item):
@@ -287,7 +218,6 @@ class VariantViz:
 				ht += key + ": " + val + "<br>"
 		return ht
 	
-
 	def make_graph(self, var_data, var_name, subset_data="", vert_space=4, box_width=25, \
 				box_height=4, text_y0=100, plot_width=1000, plot_height=500, offset=20, expanded=True, biosamples=""):
 
@@ -356,14 +286,6 @@ class VariantViz:
 						cur_biosample = item["biosample_term_name"]
 						node_trace['x'].append(item["text-coords"][0])
 						node_trace['y'].append(item["text-coords"][1])
-
-						''' 
-						if cur_biosample != last_biosample:
-							text = item["biosample_term_name"] + ":<br>"
-						else:
-							text = ""
-						'''
-
 						text = item['biosample_term_name'] + ": "
 						if "state" in item.keys():
 							text += item['state']
@@ -380,12 +302,7 @@ class VariantViz:
 			edge_trace['y'] += [positions[var_name]["shape-coords"][0][1], positions[var_name]["annotations"][anno]["shape-coords"][1][1], None]
 		
 		#add invisible points:
-		print("setting invisible points:")
 		min_coords, max_coords = self.invisible_points(all_positions, var_name, box_height)
-		#min_coords, max_coords = self.invisible_points(positions, var_name)
-		print("min coords:", min_coords)
-		print("max coords:", max_coords)
-		print()
 		node_trace['x'].append(min_coords[0])
 		node_trace['y'].append(min_coords[1])
 		node_trace['x'].append(max_coords[0])
@@ -421,25 +338,9 @@ class VariantViz:
 		)
 
 		#generate shapes:
-		'''
-		biosample_colors = self.get_biosample_colors(biosamples)
-		layout['shapes'] = self.generate_shapes(positions, var_name, \
-			biosample_colors=biosample_colors, expanded=expanded)
-		'''
 		layout['shapes'] = self.generate_shapes(positions, var_name, \
 			biosample_colors="", expanded=expanded)
 		data = [node_trace, edge_trace]
 		fig = go.Figure(data=data, layout=layout)
 		return fig
 		
-
-
-
-
-
-
-
-
-
-
-

@@ -21,7 +21,6 @@ vv = VariantViz()
 
 #initialize var_data
 var_name = "rs11257655"
-#var_name = "rs7903146"
 with urllib.request.urlopen(vv.rsid_url(var_name)) as url:
 	var_data = json.loads(url.read())
 all_annotations = [key for key in var_data.keys()]
@@ -29,16 +28,20 @@ all_annotations = [key for key in var_data.keys()]
 #initialize number of button clicks:
 rsid_button_clicks = 0
 
+#dash app layout
 app.layout = html.Div(children=[
 
 	html.Div(children=[
 
+		#rsid search bar
 		html.Plaintext('search rsid'),
 		dcc.Input(
 			id='rsid-input',
 			value=var_name,
 			type="text"
 		),
+
+		#update button
 		html.Button('update', id='rsid-button'),
 		dcc.RadioItems(
 			id='expand-radio',
@@ -49,14 +52,16 @@ app.layout = html.Div(children=[
 			value = "more",
 		),
 
+		#annotation selection dropdown menu
 		html.Plaintext('select annotations'),
 		dcc.Dropdown(
 			id='annotation-dropdown',
-			#obtain options directly from var data:
 			options=[{'label': anno, 'value': anno} for anno in all_annotations],
 			value=[key for key in var_data.keys()],
 			multi=True
 		),
+
+		#biosample selection dropdown menu
 		html.Plaintext('select biosamples'),
 		dcc.Dropdown(
 			id='biosample-dropdown',
@@ -64,16 +69,14 @@ app.layout = html.Div(children=[
 			value=[biosample for biosample in vv.get_biosamples(var_data)],
 			multi=True
 		)
-		#html.Div(children=[])
-
 	], style={'columnCount': 1}),
 
+	#annotation / variant visualization graph 
 	dcc.Graph(id='test-interactivity',figure=vv.make_graph(var_data=var_data, var_name=var_name)),
-
-
+ 
 ])
 
-
+#function to update the annotation graph when selections have been changed
 @app.callback(
 	Output('test-interactivity', 'figure'),
 	[Input('annotation-dropdown', 'value'),
@@ -84,7 +87,6 @@ app.layout = html.Div(children=[
 def update_graph(annot_value, expand_value, new_rsid, num_clicks, selected_biosamples):
 	print("updating graph")
 	print("biosamples:", len(selected_biosamples), selected_biosamples)
-	#declare globals
 	global var_name
 	global var_data
 	global all_annotations
@@ -108,7 +110,6 @@ def update_graph(annot_value, expand_value, new_rsid, num_clicks, selected_biosa
 	#make new dict using only checked values:
 	new_data = {key:val for key, val in var_data.items() if key in annot_value}
 
-	#expand or not?
 	if expand_value == "more":
 		expanded = True
 	else:
@@ -117,7 +118,7 @@ def update_graph(annot_value, expand_value, new_rsid, num_clicks, selected_biosa
 	return vv.make_graph(var_data=var_data, var_name=var_name, subset_data=new_data, expanded=expanded, \
 		biosamples=selected_biosamples)
 
-#update menu choices when var_name changes:
+#update menu choices when a new variant has been selected
 @app.callback(
 	Output('annotation-dropdown', 'options'),
 	[Input('rsid-input', 'value'),
@@ -128,14 +129,12 @@ def update_dropdown(new_rsid, num_clicks):
 	global all_annotations
 
 	#if num_clicks is not None and num_clicks == rsid_button_clicks + 1:
-	if num_clicks > 0:
+	if num_clicks > 0 and num_clicks is not None:
 		print("updating dropdown menu")
 		print("annotations:", all_annotations)
 		all_annotations = [key for key in var_data.keys()]
 
 	return [{'label': anno, 'value': anno} for anno in all_annotations]
-
-
 
 if __name__ == '__main__':
 	app.run_server(debug=True)
